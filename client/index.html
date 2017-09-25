@@ -1,13 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
     <script type="text/babel" >
         "use strict";
+
+        let userInfo;
+        let draws = {};
+        let canvas;
+        let infocanvas;
+        let ctx;
+        let infoctx;
+        let mySquare = {};
+
+        const draw = () => {
+            ctx.save()
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.restore();
+
+            let keys = Object.keys(draws);
+            for(var i=keys.length-1; i>=0; i--){
+                let drawing = draws[keys[i]];
+                ctx.save();
+                ctx.fillStyle = drawing.color;
+                ctx.fillRect(drawing.x, drawing.y, drawing.width, drawing.height);
+                ctx.restore();
+            }
+        }
+
+        const connectSocket = () => {
+            let sock = io.connect();
+
+            sock.on('connect', () => {
+                console.log('connecting');
+
+                mySquare.user = sock.id;
+
+                sock.emit('addSquare', mySquare);
+            });
+
+            sock.on('addSquare', function(data){
+                draws[data.user] = data;
+                draw();
+            })
+
+            setInterval(function(){ 
+
+                mySquare.x = parseInt(Math.random()*200);
+                mySquare.y = parseInt(Math.random()*200);
+                mySquare.width = parseInt(Math.random()*100)+20;
+                mySquare.height = parseInt(Math.random()*100)+20;
+
+                sock.emit('addSquare', mySquare);
+            }, 1000);
+        };
+
+        const init = () => {
+            canvas = document.querySelector('#socketCanvas');
+            ctx = canvas.getContext('2d');
+            infocanvas = document.querySelector('#infoCanvas');
+            infoctx = infocanvas.getContext('2d');
+            userInfo = document.querySelector('#userInfo');
+
+            mySquare = {
+                x: parseInt(Math.random()*200),
+                y: parseInt(Math.random()*200),
+                width: parseInt(Math.random()*100)+15,
+                height: parseInt(Math.random()*100)+15,
+                color: 'rgb('+parseInt(Math.random()*255)+','+parseInt(Math.random()*255)+','+parseInt(Math.random()*255)+')',
+                time: Date.now(),
+                user: '',
+            };
+
+            userInfo.innerHTML = 'MY SQUARE:<br>x: ' + mySquare.x;
+            userInfo.innerHTML += '<br>y: ' + mySquare.y;
+            userInfo.innerHTML += '<br>color:';
+            infoctx.fillStyle = mySquare.color;
+            infoctx.fillRect(0,0,infocanvas.width, infocanvas.height);
+
+            connectSocket();
+        };
+
+        window.onload = init;
     
     </script>
 </head>
 <body>
-
+<div id='userInfo'>
+</div>
+<canvas id='infoCanvas' style="width:20px;height:20px;position:absolute;"></canvas>
+<canvas id='socketCanvas' style="width:200px;height:200px;"></canvas>
 </body>
 </html>
